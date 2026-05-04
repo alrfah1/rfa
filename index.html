@@ -48,6 +48,35 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- Notification Modal -->
+    <div class="modal-overlay" id="notificationModalOverlay">
+        <div class="modal-card" style="max-width: 400px;">
+            <div class="modal-header">
+                <span class="modal-title">🔔 إرسال تنبيه للمكاتب</span>
+                <button class="btn-close" onclick="closeNotificationModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label>عنوان التنبيه</label>
+                    <input type="text" id="notifTitle" placeholder="مثلاً: تحديث جديد في النظام">
+                </div>
+                <div class="input-group">
+                    <label>نص الرسالة</label>
+                    <textarea id="notifBody" placeholder="اكتب نص التنبيه هنا..." style="width: 100%; height: 100px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit;"></textarea>
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: var(--surface-alt); border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+                    <i class="fas fa-info-circle"></i> سيتم إرسال هذا التنبيه كإشعار "Push" لجميع المكاتب التي تستخدم التطبيق.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeNotificationModal()">إلغاء</button>
+                <button class="btn btn-gold" onclick="sendPushNotification()">
+                    <i class="fas fa-paper-plane"></i> إرسال الآن
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main App Shell -->
     <div class="app-shell" id="appShell" style="display:none;">
         <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
@@ -124,6 +153,9 @@
                     <input type="text" class="search-input" id="globalSearch" placeholder="🔍 بحث..." oninput="handleGlobalSearch()">
                     <button class="theme-toggle" onclick="toggleTheme()" title="تغيير المظهر">
                         <i class="fas fa-moon" id="themeIcon"></i>
+                    </button>
+                    <button class="btn btn-gold btn-sm" id="adminNotifBtn" style="display:none; margin-right:8px;" onclick="openNotificationModal()" title="إرسال تنبيه للمكاتب">
+                        <i class="fas fa-bell"></i>
                     </button>
                 </div>
             </header>
