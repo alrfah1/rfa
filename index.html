@@ -17,6 +17,10 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDK (Compat version for global 'firebase' object) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -61,11 +65,23 @@
                 <a data-page="profits" onclick="navigateTo('profits')">
                     <i class="fas fa-calculator"></i> الأرباح والمصروفات
                 </a>
+                <a data-page="sell-cut" onclick="navigateTo('sell-cut')">
+                    <i class="fas fa-cut"></i> بيع وقص
+                </a>
                 <a data-page="clients" onclick="navigateTo('clients')">
                     <i class="fas fa-address-book"></i> العملاء
                 </a>
                 <a data-page="reports" onclick="navigateTo('reports')">
                     <i class="fas fa-file-invoice"></i> التقارير المحاسبية
+                </a>
+                <a data-page="analytics" onclick="navigateTo('analytics')">
+                    <i class="fas fa-chart-pie"></i> التحليلات المتقدمة
+                </a>
+                <a data-page="backups" onclick="navigateTo('backups')">
+                    <i class="fas fa-shield-alt"></i> النسخ الاحتياطية
+                </a>
+                <a data-page="security" onclick="navigateTo('security')">
+                    <i class="fas fa-lock"></i> الأمان وكلمة المرور
                 </a>
                 <a data-page="settings" onclick="navigateTo('settings')">
                     <i class="fas fa-cogs"></i> الإعدادات
@@ -80,16 +96,18 @@
                     <i class="fas fa-building"></i> المكاتب
                 </a>
             </nav>
-            <div class="sidebar-footer">
-                <button class="btn btn-outline btn-sm" onclick="exportBackup()">
-                    <i class="fas fa-download"></i> تصدير البيانات
-                </button>
-                <button class="btn btn-outline btn-sm" onclick="document.getElementById('importFile').click()">
-                    <i class="fas fa-upload"></i> استيراد البيانات
-                </button>
+            <div class="sidebar-footer" style="padding: 15px; border-top: 1px solid var(--border);">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                    <button class="btn btn-outline btn-xs" onclick="exportBackup()" title="تصدير نسخة احتياطية">
+                        <i class="fas fa-download"></i> تصدير
+                    </button>
+                    <button class="btn btn-outline btn-xs" onclick="document.getElementById('importFile').click()" title="استيراد نسخة احتياطية">
+                        <i class="fas fa-upload"></i> استيراد
+                    </button>
+                </div>
                 <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importBackup(event)">
-                <button class="btn btn-danger" style="width:100%; margin-top:10px; padding:12px; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:10px;" onclick="handleLogout()">
-                    <i class="fas fa-power-off"></i> تسجيل الخروج
+                <button class="btn btn-danger" style="width:100%; padding:10px; font-weight:bold; display:flex; align-items:center; justify-content:center; gap:8px; border-radius: 8px; box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);" onclick="handleLogout()">
+                    <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
                 </button>
             </div>
         </aside>
@@ -102,6 +120,10 @@
                     <h2 class="page-title" id="pageTitle">لوحة التحكم</h2>
                 </div>
                 <div class="topbar-actions">
+                    <div id="userInfoDisplay" style="margin-left:15px; font-weight:700; color:var(--gold); display:flex; align-items:center; gap:5px;">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="currentUserNameDisplay"></span>
+                    </div>
                     <input type="text" class="search-input" id="globalSearch" placeholder="🔍 بحث..." oninput="handleGlobalSearch()">
                     <button class="theme-toggle" onclick="toggleTheme()" title="تغيير المظهر">
                         <i class="fas fa-moon" id="themeIcon"></i>
@@ -114,6 +136,18 @@
                 <!-- Dashboard Page -->
                 <div class="page active" id="page-dashboard">
                     <div class="stats-grid" id="dashboardStats"></div>
+                    
+                    <!-- Notifications Section -->
+                    <div class="card" id="notificationsCard" style="margin-bottom:20px;">
+                        <div class="card-header">
+                            <span class="card-title">🔔 التنبيهات الذكية</span>
+                            <button class="btn btn-outline btn-xs" onclick="renderNotificationsPanel()">تحديث</button>
+                        </div>
+                        <div id="notificationsPanel" style="padding:15px;max-height:200px;overflow-y:auto;">
+                            <div style="text-align:center;color:var(--text-secondary);">لا توجد تنبيهات حالياً</div>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-header"><span class="card-title">📈 الأرباح اليومية (آخر 30 يوم)</span></div>
                         <div class="chart-container"><canvas id="profitChart"></canvas></div>
@@ -194,6 +228,55 @@
                     </div>
                 </div>
 
+                <!-- Sell and Cut Page -->
+                <div class="page" id="page-sell-cut">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">✂️ عمليات البيع والقص</span>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <div class="filters-row">
+                                    <div class="filter-group">
+                                        <label>السنة</label>
+                                        <select id="sellCutFilterYear" onchange="renderSellCut()"></select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label>الشهر</label>
+                                        <select id="sellCutFilterMonth" onchange="renderSellCut()">
+                                            <option value="all">📅 كل الأشهر</option>
+                                            <option value="1">يناير</option><option value="2">فبراير</option><option value="3">مارس</option>
+                                            <option value="4">أبريل</option><option value="5">مايو</option><option value="6">يونيو</option>
+                                            <option value="7">يوليو</option><option value="8">أغسطس</option><option value="9">سبتمبر</option>
+                                            <option value="10">أكتوبر</option><option value="11">نوفمبر</option><option value="12">ديسمبر</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label>اليوم</label>
+                                        <input type="date" id="sellCutFilterDate" onchange="renderSellCut()">
+                                    </div>
+                                </div>
+                                <button class="btn btn-gold btn-sm" onclick="window.openSellCutModal()">
+                                    <i class="fas fa-plus"></i> إضافة عملية
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="window.exportSellCutPDF()">
+                                    <i class="fas fa-file-pdf"></i> تصدير PDF
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>التاريخ</th><th>العميل</th><th>العملة</th><th>المبلغ</th><th>سعر الشراء</th><th>سعر البيع</th><th>الربح ($)</th><th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sellCutTable"></tbody>
+                            </table>
+                        </div>
+                        <div class="empty-state" id="sellCutEmpty" style="display:none;">📭 لا توجد عمليات بيع وقص مسجلة</div>
+                        <div id="sellCutSummary" class="stats-grid" style="margin-top: 20px;"></div>
+                    </div>
+                </div>
+
                 <!-- Reports Page -->
                 <div class="page" id="page-reports">
                     <div class="stats-grid" id="reportStats"></div>
@@ -217,21 +300,91 @@
                     </div>
                 </div>
 
+                <!-- Analytics Page -->
+                <div class="page" id="page-analytics">
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">📊 التحليلات المتقدمة</span></div>
+                        <div id="advancedDashboardContainer" style="padding:15px;"></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:15px;">
+                            <div class="card" style="margin:0;">
+                                <div class="card-header"><span class="card-title">🏆 أداء البائعين</span></div>
+                                <div id="sellerPerformancePanel" style="padding:10px;"></div>
+                            </div>
+                            <div class="card" style="margin:0;">
+                                <div class="card-header"><span class="card-title">👥 تحليل العملاء</span></div>
+                                <div id="clientAnalyticsPanel" style="padding:10px;"></div>
+                            </div>
+                        </div>
+                        <div class="card" style="margin:15px;">
+                            <div class="card-header"><span class="card-title">📈 مؤشرات الأداء الرئيسية (KPI)</span></div>
+                            <div id="kpiDashboard" style="padding:15px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Backups Page -->
+                <div class="page" id="page-backups">
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">🛡️ إدارة النسخ الاحتياطية</span></div>
+                        <div id="smartBackupsPanel" style="padding:20px;"></div>
+                    </div>
+                </div>
+
+                <!-- Security Page -->
+                <div class="page" id="page-security">
+                    <div class="card">
+                        <div class="card-header"><span class="card-title">🔐 الأمان وكلمة المرور</span></div>
+                        <div style="padding:20px; max-width:600px; margin:0 auto;">
+                            <div style="text-align:center; margin-bottom:30px;">
+                                <i class="fas fa-user-shield" style="font-size:4rem; color:var(--gold); margin-bottom:15px;"></i>
+                                <h3>تغيير كلمة المرور الشخصية</h3>
+                                <p style="color:var(--text-secondary);">يرجى إدخال كلمة المرور الحالية لتتمكن من تعيين كلمة مرور جديدة</p>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom:15px;">
+                                <label>كلمة المرور الحالية</label>
+                                <input type="password" id="secCurrentPass" placeholder="أدخل كلمة المرور الحالية" style="width:100%;padding:12px;border:2px solid var(--border);border-radius:8px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                            </div>
+                            <div class="form-group" style="margin-bottom:15px;">
+                                <label>كلمة المرور الجديدة</label>
+                                <input type="password" id="secNewPass" placeholder="أدخل كلمة المرور الجديدة" style="width:100%;padding:12px;border:2px solid var(--border);border-radius:8px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                            </div>
+                            <div class="form-group" style="margin-bottom:25px;">
+                                <label>تأكيد كلمة المرور الجديدة</label>
+                                <input type="password" id="secConfirmPass" placeholder="أعد إدخال كلمة المرور الجديدة" style="width:100%;padding:12px;border:2px solid var(--border);border-radius:8px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                            </div>
+                            
+                            <button class="btn btn-gold" style="width:100%; padding:15px; font-weight:bold; font-size:1.1rem;" onclick="changeSecurityPassword()">
+                                <i class="fas fa-save"></i> حفظ كلمة المرور الجديدة
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Settings Page -->
                 <div class="page" id="page-settings">
                     <div class="card">
                         <div class="card-header"><span class="card-title">⚙️ الإعدادات العامة</span></div>
-                        <div class="form-group" style="margin-bottom:12px;">
-                            <label>👤 اسم المستخدم الحالي (المدير)</label>
-                            <input type="text" id="settingsUser" disabled style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-family:var(--font-primary);background:var(--surface-alt);color:var(--text);opacity:0.6;">
+                        <div style="padding:20px;">
+                            <div class="form-group" style="margin-bottom:12px;">
+                                <label>👤 اسم المستخدم الحالي</label>
+                                <input type="text" id="settingsUser" disabled style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-family:var(--font-primary);background:var(--surface-alt);color:var(--text);opacity:0.6;">
+                            </div>
+                            <div class="form-group" style="margin-bottom:20px;">
+                                <label>🔒 حالة الحساب</label>
+                                <input type="text" id="settingsStatus" disabled value="نشط" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-family:var(--font-primary);background:var(--surface-alt);color:var(--text);opacity:0.6;">
+                            </div>
+                            
+                            <div id="adminOnlySettings" style="display:none;">
+                                <hr style="border-color:var(--border);margin:20px 0;">
+                                <h4 style="margin-bottom:15px; color:var(--gold);"><i class="fas fa-user-crown"></i> إعدادات المدير العام</h4>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+                                    <button class="btn btn-primary btn-sm" onclick="openUsersModal()"><i class="fas fa-users-cog"></i> إدارة المستخدمين</button>
+                                    <button class="btn btn-outline btn-sm" onclick="openPerformanceReportModal()"><i class="fas fa-file-medical-alt"></i> تقارير الأداء المتقدمة</button>
+                                </div>
+                                <button class="btn btn-danger btn-sm" style="width:100%;" onclick="resetAllData()"><i class="fas fa-trash-alt"></i> حذف جميع البيانات وصفر الحسابات</button>
+                            </div>
                         </div>
-                        <div class="form-group" style="margin-bottom:12px;">
-                            <label>🔒 كلمة المرور الحالية (المدير)</label>
-                            <input type="password" id="settingsPass" disabled style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;font-family:var(--font-primary);background:var(--surface-alt);color:var(--text);opacity:0.6;">
-                        </div>
-                        <button class="btn btn-primary btn-sm" onclick="openUsersModal()"><i class="fas fa-users"></i> إدارة المستخدمين</button>
-                        <hr style="border-color:var(--border);margin:20px 0;">
-                        <button class="btn btn-danger btn-sm" onclick="resetAllData()"><i class="fas fa-trash-alt"></i> حذف جميع البيانات وصفر الحسابات</button>
                     </div>
                 </div>
 
@@ -401,7 +554,7 @@
                 </div>
                 <div class="form-group">
                     <label>📅 صلاحية البدء من (سنة)</label>
-                    <input type="number" id="officeStartYear" placeholder="2024" min="2024" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                    <input type="number" id="officeStartYear" placeholder="2026" min="2024" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -424,7 +577,7 @@
                 </div>
                 <div class="form-group">
                     <label>📅 صلاحية التوقف حتى (سنة)</label>
-                    <input type="number" id="officeEndYear" placeholder="2024" min="2024" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                    <input type="number" id="officeEndYear" placeholder="2026" min="2024" style="width:100%;padding:8px;border:2px solid var(--border);border-radius:6px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
                 </div>
             </div>
             <input type="hidden" id="officeEditId">
@@ -455,8 +608,123 @@
         </div>
     </div>
 
+    <!-- Change Password Modal (for Admin) -->
+    <div class="modal-overlay" id="changePasswordModalOverlay">
+        <div class="modal" style="width:500px;max-width:95vw;">
+            <h3>🔐 تغيير كلمة المرور</h3>
+            <div style="margin-bottom:16px;">
+                <p style="color:var(--text-secondary);margin-bottom:12px;">المستخدم: <strong id="changePasswordUsername"></strong></p>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label>كلمة المرور الحالية</label>
+                    <input type="password" id="currentPasswordField" placeholder="أدخل كلمة المرور الحالية" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label>كلمة المرور الجديدة</label>
+                    <input type="password" id="newPasswordField" placeholder="أدخل كلمة المرور الجديدة" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label>تأكيد كلمة المرور الجديدة</label>
+                    <input type="password" id="confirmPasswordField" placeholder="أعد إدخال كلمة المرور الجديدة" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline btn-sm" onclick="closeChangePasswordModal()">إلغاء</button>
+                <button class="btn btn-primary btn-sm" onclick="changePassword()"><i class="fas fa-save"></i> حفظ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Password Modal (Personal Settings) -->
+    <div class="modal-overlay" id="myPasswordModalOverlay">
+        <div class="modal" style="width:500px;max-width:95vw;">
+            <h3>🔐 تغيير كلمة المرور الشخصية</h3>
+            <div style="margin-bottom:16px;">
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label>كلمة المرور الحالية</label>
+                    <input type="password" id="myCurrentPasswordField" placeholder="أدخل كلمة المرور الحالية" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label>كلمة المرور الجديدة</label>
+                    <input type="password" id="myNewPasswordField" placeholder="أدخل كلمة المرور الجديدة" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label>تأكيد كلمة المرور الجديدة</label>
+                    <input type="password" id="myConfirmPasswordField" placeholder="أعد إدخال كلمة المرور الجديدة" style="width:100%;padding:10px;border:2px solid var(--border);border-radius:8px;background:var(--surface-alt);color:var(--text);font-family:var(--font-primary);">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline btn-sm" onclick="closeMyPasswordModal()">إلغاء</button>
+                <button class="btn btn-primary btn-sm" onclick="changeMyPassword()"><i class="fas fa-save"></i> حفظ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sell and Cut Modal -->
+    <div class="modal-overlay" id="sellCutModalOverlay">
+        <div class="modal" style="width:550px;max-width:95vw;">
+            <h3 id="sellCutModalTitle">➕ إضافة عملية بيع وقص</h3>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>👤 العميل</label>
+                    <div style="display:flex;gap:8px;">
+                        <select id="sellCutClient" style="flex:1;"></select>
+                        <button class="btn btn-outline btn-sm" onclick="quickAddClient()" title="إضافة عميل سريع"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>💵 العملة</label>
+                    <select id="sellCutCurrency">
+                        <option value="TRY">🇹🇷 ليرة تركي</option>
+                        <option value="SYP">🇸🇾 ليرة سوري</option>
+                        <option value="USD">💵 دولار</option>
+                        <option value="EUR">🇪🇺 يورو</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>💰 المبلغ المشتري</label>
+                    <input type="number" id="sellCutAmount" step="0.01" placeholder="أدخل المبلغ" oninput="calculateSellCutProfit()">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="form-group">
+                        <label>📉 سعر قص الشراء</label>
+                        <input type="number" id="sellCutBuyPrice" step="0.0001" placeholder="مثلاً 46" oninput="calculateSellCutProfit()">
+                    </div>
+                    <div class="form-group">
+                        <label>📈 سعر قص البيع</label>
+                        <input type="number" id="sellCutSellPrice" step="0.0001" placeholder="مثلاً 45.9" oninput="calculateSellCutProfit()">
+                    </div>
+                </div>
+                <div id="sellCutLiveProfit" class="profit-preview">
+                    الربح المتوقع: 0.00 $
+                </div>
+                <input type="hidden" id="sellCutEditId">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline btn-sm" onclick="closeSellCutModal()">إلغاء</button>
+                <button class="btn btn-gold btn-sm" onclick="saveSellCut()">إضافة للعملية</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Report Modal -->
+    <div class="modal-overlay" id="performanceReportModalOverlay">
+        <div class="modal" style="width:600px;max-width:95vw;max-height:80vh;overflow-y:auto;">
+            <h3>📊 تقرير الأداء المتقدم</h3>
+            <div id="performanceReportContent" style="margin-bottom:16px;"></div>
+            <div class="modal-actions">
+                <button class="btn btn-outline btn-sm" onclick="downloadCustomReport('daily')"><i class="fas fa-download"></i> تحميل يومي</button>
+                <button class="btn btn-outline btn-sm" onclick="downloadCustomReport('weekly')"><i class="fas fa-download"></i> تحميل أسبوعي</button>
+                <button class="btn btn-outline btn-sm btn-sm" onclick="closePerformanceReportModal()">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
     <script src="amiri_font.js"></script>
     <script src="firebase-config.js"></script>
+    <script src="permissions_functions.js"></script>
+    <script src="offices_functions.js"></script>
+    <script src="users_management.js"></script>
+    <script src="professional_features.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

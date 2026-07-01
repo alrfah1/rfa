@@ -69,6 +69,9 @@
                 <a data-page="clients" onclick="navigateTo('clients')">
                     <i class="fas fa-address-book"></i> العملاء
                 </a>
+                <a data-page="sell-cut" onclick="navigateTo('sell-cut')">
+                    <i class="fas fa-cut"></i> بيع وقص
+                </a>
                 <a data-page="reports" onclick="navigateTo('reports')">
                     <i class="fas fa-file-invoice"></i> التقارير المحاسبية
                 </a>
@@ -196,6 +199,55 @@
                                 <tbody id="clientTransactionsTable"></tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Sell and Cut Page -->
+                <div class="page" id="page-sell-cut">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-title">✂️ عمليات البيع والقص</span>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <div class="filters-row">
+                                    <div class="filter-group">
+                                        <label>السنة</label>
+                                        <select id="sellCutFilterYear" onchange="renderSellCut()"></select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label>الشهر</label>
+                                        <select id="sellCutFilterMonth" onchange="renderSellCut()">
+                                            <option value="all">📅 كل الأشهر</option>
+                                            <option value="1">يناير</option><option value="2">فبراير</option><option value="3">مارس</option>
+                                            <option value="4">أبريل</option><option value="5">مايو</option><option value="6">يونيو</option>
+                                            <option value="7">يوليو</option><option value="8">أغسطس</option><option value="9">سبتمبر</option>
+                                            <option value="10">أكتوبر</option><option value="11">نوفمبر</option><option value="12">ديسمبر</option>
+                                        </select>
+                                    </div>
+                                    <div class="filter-group">
+                                        <label>اليوم</label>
+                                        <input type="date" id="sellCutFilterDate" onchange="renderSellCut()">
+                                    </div>
+                                </div>
+                                <button class="btn btn-gold btn-sm" onclick="window.openSellCutModal()">
+                                    <i class="fas fa-plus"></i> إضافة عملية
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="window.exportSellCutPDF()">
+                                    <i class="fas fa-file-pdf"></i> تصدير PDF
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>التاريخ</th><th>العميل</th><th>العملة</th><th>المبلغ</th><th>سعر الشراء</th><th>سعر البيع</th><th>الربح ($)</th><th>الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sellCutTable"></tbody>
+                            </table>
+                        </div>
+                        <div class="empty-state" id="sellCutEmpty" style="display:none;">📭 لا توجد عمليات بيع وقص مسجلة</div>
+                        <div id="sellCutSummary" class="stats-grid" style="margin-top: 20px;"></div>
                     </div>
                 </div>
 
@@ -356,6 +408,53 @@
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closeClientModal()">إلغاء</button>
                 <button class="btn btn-gold" onclick="saveClient()">حفظ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sell and Cut Modal -->
+    <div class="modal-overlay" id="sellCutModalOverlay">
+        <div class="modal" style="width:550px;max-width:95vw;">
+            <h3 id="sellCutModalTitle">➕ إضافة عملية بيع وقص</h3>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>👤 العميل</label>
+                    <div style="display:flex;gap:8px;">
+                        <select id="sellCutClient" style="flex:1;"></select>
+                        <button class="btn btn-outline btn-sm" onclick="quickAddClient()" title="إضافة عميل سريع"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>💵 العملة</label>
+                    <select id="sellCutCurrency">
+                        <option value="TRY">🇹🇷 ليرة تركي</option>
+                        <option value="SYP">🇸🇾 ليرة سوري</option>
+                        <option value="USD">💵 دولار</option>
+                        <option value="EUR">🇪🇺 يورو</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>💰 المبلغ المشتري</label>
+                    <input type="number" id="sellCutAmount" step="0.01" placeholder="أدخل المبلغ" oninput="calculateSellCutProfit()">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="form-group">
+                        <label>📉 سعر قص الشراء</label>
+                        <input type="number" id="sellCutBuyPrice" step="0.0001" placeholder="مثلاً 46" oninput="calculateSellCutProfit()">
+                    </div>
+                    <div class="form-group">
+                        <label>📈 سعر قص البيع</label>
+                        <input type="number" id="sellCutSellPrice" step="0.0001" placeholder="مثلاً 45.9" oninput="calculateSellCutProfit()">
+                    </div>
+                </div>
+                <div id="sellCutLiveProfit" class="profit-preview">
+                    الربح المتوقع: 0.00 $
+                </div>
+                <input type="hidden" id="sellCutEditId">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-outline btn-sm" onclick="closeSellCutModal()">إلغاء</button>
+                <button class="btn btn-gold btn-sm" onclick="saveSellCut()">إضافة للعملية</button>
             </div>
         </div>
     </div>
