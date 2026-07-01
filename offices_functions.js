@@ -9,17 +9,7 @@
     }
 
     function saveOffices(offices) {
-        // حفظ في localStorage
         localStorage.setItem(OFFICES_KEY, JSON.stringify(offices));
-        
-        // محاولة حفظ في Firebase إذا كان متاحاً
-        if (typeof saveCloudOffices === 'function' && firebaseInitialized) {
-            saveCloudOffices(offices).then(() => {
-                console.log('✅ تم حفظ المكاتب في Firebase بنجاح');
-            }).catch(error => {
-                console.warn('⚠️ فشل حفظ المكاتب في Firebase:', error.message);
-            });
-        }
     }
 
     function generateOfficeId() {
@@ -111,7 +101,7 @@
                 saveOffices(offices);
                 saveUsers(users);
                 addAuditEntry('تعديل', `تعديل بيانات المكتب: ${name}`, `المدير: ${managerName}`);
-                showToast('✅ تم تحديث بيانات المكتب بنجاح');
+                showToast('تم تحديث بيانات المكتب بنجاح');
             }
         } else {
             // إضافة مكتب جديد
@@ -145,13 +135,7 @@
             saveOffices(offices);
             saveUsers(users);
             addAuditEntry('إضافة', `إنشاء مكتب جديد: ${name}`, `المدير: ${managerName}, اليوزر: ${username}`);
-            
-            // رسالة تأكيد مع حالة Firebase
-            if (firebaseInitialized) {
-                showToast('✅ تم إنشاء المكتب وحفظه في Firebase');
-            } else {
-                showToast('⚠️ تم إنشاء المكتب محلياً (لا يوجد اتصال Firebase)');
-            }
+            showToast('تم إنشاء المكتب بنجاح');
         }
 
         closeOfficeModal();
@@ -183,7 +167,7 @@
                     saveOffices(offices);
                     saveUsers(users);
                     addAuditEntry('حذف', `حذف المكتب: ${office.name}`, `المدير: ${office.managerName}`);
-                    showToast('✅ تم حذف المكتب بنجاح');
+                    showToast('تم حذف المكتب بنجاح');
                     renderOffices();
                 }
             }
@@ -209,24 +193,13 @@
             saveOffices(offices);
             saveUsers(users);
             addAuditEntry('إدارة', `${newStatus === 'blocked' ? 'حظر' : 'تفعيل'} المكتب: ${office.name}`);
-            showToast(newStatus === 'blocked' ? '🔒 تم حظر المكتب' : '✅ تم تفعيل المكتب');
+            showToast(newStatus === 'blocked' ? 'تم حظر المكتب' : 'تم تفعيل المكتب');
             renderOffices();
         }
     };
 
-    async function renderOffices() {
-        // تحميل البيانات من Firebase إذا كانت متاحة
-        let offices = getOffices();
-        if (firebaseInitialized && typeof getCloudOffices === 'function') {
-            try {
-                offices = await getCloudOffices();
-                localStorage.setItem(OFFICES_KEY, JSON.stringify(offices));
-                console.log('✅ تم تحميل المكاتب من Firebase في renderOffices');
-            } catch (error) {
-                console.warn('⚠️ فشل تحميل المكاتب من Firebase، استخدام البيانات المحلية');
-            }
-        }
-        
+    function renderOffices() {
+        const offices = getOffices();
         const tbody = document.getElementById('officesTableBody');
         const emptyState = document.getElementById('officesEmpty');
 
@@ -241,7 +214,7 @@
         const monthNames = ['', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
         
         tbody.innerHTML = offices.map(office => `
-            <tr data-office-id="${office.id}" data-firebase-synced="${firebaseInitialized ? 'yes' : 'no'}">
+            <tr>
                 <td><strong>${office.name}</strong></td>
                 <td>${office.managerName}</td>
                 <td><code style="background:var(--surface-alt);padding:4px 8px;border-radius:4px;font-size:0.85rem;">${office.username}</code></td>
