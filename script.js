@@ -120,6 +120,10 @@
     let selectedClientId = null;
     let profitChart = null;
     let currentUser = null;
+    
+    // جعل getData و saveData متاحة عالميًا
+    window.getDataGlobal = function() { return getData(); };
+    window.saveDataGlobal = function(data) { return saveData(data); };
 
     function showToast(msg, icon = '✅') {
         const container = document.getElementById('toastContainer');
@@ -1152,10 +1156,16 @@
     };
 
     window.openSellCutModal = function(editId = null) {
-        const data = getData();
-        const clientSelect = document.getElementById('sellCutClient');
-        if (clientSelect) {
-            clientSelect.innerHTML = data.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('') || '<option value="">لا يوجد عملاء</option>';
+        try {
+            const data = getData();
+            const clientSelect = document.getElementById('sellCutClient');
+            if (clientSelect) {
+                clientSelect.innerHTML = data.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('') || '<option value="">لا يوجد عملاء</option>';
+            }
+        } catch (error) {
+            console.error('خطأ في فتح الـ modal:', error);
+            showToast('❌ خطأ في فتح نافذة الإضافة', '❌');
+            return;
         }
         
         const modalOverlay = document.getElementById('sellCutModalOverlay');
